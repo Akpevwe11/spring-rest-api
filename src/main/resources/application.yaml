@@ -1,0 +1,12 @@
+spring:
+  flyway:
+   enabled: true
+  application:
+    name: store
+  datasource:
+    url: jdbc:mysql://localhost:3306/store_api?createDatabaseIfNotExist=true
+    username: essiakpevwe
+    password: 123@Zuckerberg@12
+  jpa:
+    show-sql: true
+
