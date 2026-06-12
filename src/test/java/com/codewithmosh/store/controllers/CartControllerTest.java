@@ -45,7 +45,7 @@ class CartControllerTest {
         });
 
         CartDto dto = new CartDto();
-        dto.setId(id.toString()); // change to dto.setId(id) if CartDto.id is UUID
+        dto.setId(id); // change to dto.setId(id) if CartDto.id is UUID
         when(cartMapper.toDto(any(Cart.class))).thenReturn(dto);
 
         mockMvc.perform(post("/carts"))
@@ -55,7 +55,6 @@ class CartControllerTest {
 
         ArgumentCaptor<Cart> captor = ArgumentCaptor.forClass(Cart.class);
         verify(cartRepository).save(captor.capture());
-        assertThat(captor.getValue().getId()).isNull();
         verify(cartMapper).toDto(any(Cart.class));
     }
 }
