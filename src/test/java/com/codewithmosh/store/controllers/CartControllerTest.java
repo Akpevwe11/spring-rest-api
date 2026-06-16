@@ -1,17 +1,25 @@
 package com.codewithmosh.store.controllers;
 
 import com.codewithmosh.store.dto.CartDto;
+import com.codewithmosh.store.dto.CartItemDto;
+import com.codewithmosh.store.dto.CartProductDto;
 import com.codewithmosh.store.entities.Cart;
+import com.codewithmosh.store.entities.CartItem;
+import com.codewithmosh.store.entities.Product;
 import com.codewithmosh.store.mappers.CartMapper;
 import com.codewithmosh.store.repositories.CartRepository;
+import com.codewithmosh.store.repositories.ProductRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -29,6 +37,9 @@ class CartControllerTest {
 
     @MockitoBean
     private CartRepository cartRepository;
+
+    @MockitoBean
+    private ProductRepository productRepository;
 
     @MockitoBean
     private CartMapper cartMapper;
@@ -57,4 +68,115 @@ class CartControllerTest {
         verify(cartRepository).save(captor.capture());
         verify(cartMapper).toDto(any(Cart.class));
     }
+
+    @Test
+    @DisplayName("POST /carts/{cartId}/items increments quantity when product already exists in cart")
+    void addToCart_incrementsExistingItemQuantity() throws Exception {
+        UUID cartId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        Long productId = 1L;
+
+        var product = Product.builder()
+                .id(productId)
+                .name("Laptop")
+                .description("Gaming laptop")
+                .price(new BigDecimal("1200.00"))
+                .build();
+
+        var cart = new Cart();
+        cart.setId(cartId);
+
+        var existingItem = new CartItem();
+        existingItem.setProduct(product);
+        existingItem.setQuantity(2);
+        existingItem.setCart(cart);
+        cart.getCartItems().add(existingItem);
+
+        when(cartRepository.findById(cartId)).thenReturn(Optional.of(cart));
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(cartMapper.toDto(existingItem)).thenReturn(cartItemDto(product, 3));
+
+        mockMvc.perform(post("/carts/{cartId}/items", cartId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "productId": 1
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.product.id").value(1))
+                .andExpect(jsonPath("$.product.name").value("Laptop"))
+                .andExpect(jsonPath("$.quantity").value(3))
+                .andExpect(jsonPath("$.totalPrice").value(3600.00));
+
+        ArgumentCaptor<Cart> cartCaptor = ArgumentCaptor.forClass(Cart.class);
+        verify(cartRepository).save(cartCaptor.capture());
+        assertThat(cartCaptor.getValue().getCartItems()).hasSize(1);
+        assertThat(existingItem.getQuantity()).isEqualTo(3);
+        verify(cartMapper).toDto(existingItem);
+    }
+
+    @Test
+    @DisplayName("POST /carts/{cartId}/items adds a new product to the cart")
+    void addToCart_addsNewItemToCart() throws Exception {
+        UUID cartId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        Long productId = 1L;
+
+        var product = Product.builder()
+                .id(productId)
+                .name("Laptop")
+                .description("Gaming laptop")
+                .price(new BigDecimal("1200.00"))
+                .build();
+
+        var cart = new Cart();
+        cart.setId(cartId);
+
+        when(cartRepository.findById(cartId)).thenReturn(Optional.of(cart));
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(cartMapper.toDto(any(CartItem.class))).thenAnswer(invocation -> {
+            CartItem cartItem = invocation.getArgument(0);
+            return cartItemDto(cartItem.getProduct(), cartItem.getQuantity());
+        });
+
+        mockMvc.perform(post("/carts/{cartId}/items", cartId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "productId": 1
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.product.id").value(1))
+                .andExpect(jsonPath("$.product.name").value("Laptop"))
+                .andExpect(jsonPath("$.quantity").value(1))
+                .andExpect(jsonPath("$.totalPrice").value(1200.00));
+
+        ArgumentCaptor<Cart> cartCaptor = ArgumentCaptor.forClass(Cart.class);
+        verify(cartRepository).save(cartCaptor.capture());
+
+        var savedCart = cartCaptor.getValue();
+        assertThat(savedCart.getCartItems()).hasSize(1);
+
+        var savedItem = savedCart.getCartItems().iterator().next();
+        assertThat(savedItem.getProduct()).isSameAs(product);
+        assertThat(savedItem.getQuantity()).isEqualTo(1);
+        assertThat(savedItem.getCart()).isSameAs(cart);
+        verify(cartMapper).toDto(savedItem);
+    }
+
+    private CartItemDto cartItemDto(Product product, int quantity) {
+        var productDto = new CartProductDto();
+        productDto.setId(product.getId());
+        productDto.setName(product.getName());
+        productDto.setDescription(product.getDescription());
+        productDto.setPrice(product.getPrice().doubleValue());
+
+        var cartItemDto = new CartItemDto();
+        cartItemDto.setProduct(productDto);
+        cartItemDto.setQuantity(quantity);
+        cartItemDto.setTotalPrice(product.getPrice().multiply(BigDecimal.valueOf(quantity)));
+        return cartItemDto;
+
+    }
+
 }
