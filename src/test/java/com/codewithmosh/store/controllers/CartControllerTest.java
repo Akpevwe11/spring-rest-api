@@ -89,7 +89,7 @@ class CartControllerTest {
         existingItem.setProduct(product);
         existingItem.setQuantity(2);
         existingItem.setCart(cart);
-        cart.getCartItems().add(existingItem);
+        cart.getItems().add(existingItem);
 
         when(cartRepository.findById(cartId)).thenReturn(Optional.of(cart));
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
@@ -110,7 +110,7 @@ class CartControllerTest {
 
         ArgumentCaptor<Cart> cartCaptor = ArgumentCaptor.forClass(Cart.class);
         verify(cartRepository).save(cartCaptor.capture());
-        assertThat(cartCaptor.getValue().getCartItems()).hasSize(1);
+        assertThat(cartCaptor.getValue().getItems()).hasSize(1);
         assertThat(existingItem.getQuantity()).isEqualTo(3);
         verify(cartMapper).toDto(existingItem);
     }
@@ -155,9 +155,9 @@ class CartControllerTest {
         verify(cartRepository).save(cartCaptor.capture());
 
         var savedCart = cartCaptor.getValue();
-        assertThat(savedCart.getCartItems()).hasSize(1);
+        assertThat(savedCart.getItems()).hasSize(1);
 
-        var savedItem = savedCart.getCartItems().iterator().next();
+        var savedItem = savedCart.getItems().iterator().next();
         assertThat(savedItem.getProduct()).isSameAs(product);
         assertThat(savedItem.getQuantity()).isEqualTo(1);
         assertThat(savedItem.getCart()).isSameAs(cart);
