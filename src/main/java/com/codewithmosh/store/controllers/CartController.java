@@ -53,28 +53,14 @@ public class CartController {
         var product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product not found"));
 
-        var cartItem = cart.getItems().stream()
-                .filter(item -> item.getProduct().getId().equals(product.getId()))
-                .findFirst()
-                .orElse(null);
-
-        boolean isNewItem = false;
-
-        if (cartItem != null) {
-            cartItem.setQuantity(cartItem.getQuantity() + 1);
-        } else {
-            cartItem = new CartItem();
-            cartItem.setProduct(product);
-            cartItem.setQuantity(1);
-            cartItem.setCart(cart);
-            cart.getItems().add(cartItem);
-            isNewItem = true;
-        }
+        var cartItem = cart.addItem(product);
 
         cartRepository.save(cart);
 
         var cartItemDto = cartMapper.toDto(cartItem);
-        return ResponseEntity.status(isNewItem ? HttpStatus.CREATED : HttpStatus.OK).body(cartItemDto);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(cartItemDto);
+
     }
 
     @GetMapping("/{cartId}")
@@ -103,14 +89,11 @@ public class CartController {
             );
         }
 
-        var cartItem = cart.getItems().stream()
-                .filter(item -> item.getProduct().getId().equals(productId))
-                .findFirst()
-                .orElse(null);
+        var cartItem = cart.getItem(productId);
 
         if (cartItem == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                    Map.of("error", "Cart item not found.")
+                    Map.of("error", "Item not found in cart.")
             );
         }
 

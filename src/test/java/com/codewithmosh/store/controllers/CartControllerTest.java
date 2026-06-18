@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(CartController.class)
@@ -91,7 +92,7 @@ class CartControllerTest {
         existingItem.setCart(cart);
         cart.getItems().add(existingItem);
 
-        when(cartRepository.findById(cartId)).thenReturn(Optional.of(cart));
+        when(cartRepository.getCartWithItems(cartId)).thenReturn(Optional.of(cart));
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(cartMapper.toDto(existingItem)).thenReturn(cartItemDto(product, 3));
 
@@ -131,7 +132,7 @@ class CartControllerTest {
         var cart = new Cart();
         cart.setId(cartId);
 
-        when(cartRepository.findById(cartId)).thenReturn(Optional.of(cart));
+        when(cartRepository.getCartWithItems(cartId)).thenReturn(Optional.of(cart));
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(cartMapper.toDto(any(CartItem.class))).thenAnswer(invocation -> {
             CartItem cartItem = invocation.getArgument(0);
@@ -162,6 +163,51 @@ class CartControllerTest {
         assertThat(savedItem.getQuantity()).isEqualTo(1);
         assertThat(savedItem.getCart()).isSameAs(cart);
         verify(cartMapper).toDto(savedItem);
+    }
+
+    @Test
+    @DisplayName("PUT /carts/{cartId}/items/{productId} updates an existing cart item quantity")
+    void updateItem_updatesExistingCartItemQuantity() throws Exception {
+        UUID cartId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        Long productId = 1L;
+
+        var product = Product.builder()
+                .id(productId)
+                .name("Laptop")
+                .description("Gaming laptop")
+                .price(new BigDecimal("1200.00"))
+                .build();
+
+        var cart = new Cart();
+        cart.setId(cartId);
+
+        var existingItem = new CartItem();
+        existingItem.setProduct(product);
+        existingItem.setQuantity(2);
+        existingItem.setCart(cart);
+        cart.getItems().add(existingItem);
+
+        when(cartRepository.getCartWithItems(cartId)).thenReturn(Optional.of(cart));
+        when(cartMapper.toDto(existingItem)).thenReturn(cartItemDto(product, 5));
+
+        mockMvc.perform(put("/carts/{cartId}/items/{productId}", cartId, productId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "quantity": 5
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.product.id").value(1))
+                .andExpect(jsonPath("$.product.name").value("Laptop"))
+                .andExpect(jsonPath("$.quantity").value(5))
+                .andExpect(jsonPath("$.totalPrice").value(6000.00));
+
+        ArgumentCaptor<Cart> cartCaptor = ArgumentCaptor.forClass(Cart.class);
+        verify(cartRepository).save(cartCaptor.capture());
+        assertThat(cartCaptor.getValue()).isSameAs(cart);
+        assertThat(existingItem.getQuantity()).isEqualTo(5);
+        verify(cartMapper).toDto(existingItem);
     }
 
     private CartItemDto cartItemDto(Product product, int quantity) {
