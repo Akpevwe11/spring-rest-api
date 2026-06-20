@@ -9,4 +9,7 @@ spring:
     password: 123@Zuckerberg@12
   jpa:
     show-sql: true
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
 

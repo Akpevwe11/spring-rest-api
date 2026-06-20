@@ -1,35 +1,35 @@
 package com.codewithmosh.store.controllers;
 
-import com.codewithmosh.store.dto.ChangePasswordRequest;
-import com.codewithmosh.store.dto.RegisterUserRequest;
-import com.codewithmosh.store.dto.UpdateUserRequest;
-import com.codewithmosh.store.dto.UserDto;
+import com.codewithmosh.store.dto.*;
 import com.codewithmosh.store.entities.User;
 import com.codewithmosh.store.exceptions.UserNotFoundException;
 import com.codewithmosh.store.mappers.UserMapper;
 import com.codewithmosh.store.repositories.UserRepository;
 import jakarta.validation.Valid;
+import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.*;
 
+import static org.springframework.data.jpa.domain.AbstractPersistable_.id;
+
 
 @RestController
+@AllArgsConstructor
 @RequestMapping("/users")
 public class UserController {
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserController(UserRepository userRepository, UserMapper userMapper) {
-        this.userRepository = userRepository;
-        this.userMapper = userMapper;
-    }
+
 
     @GetMapping
     public List<UserDto> getUsers(
@@ -54,17 +54,18 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createUser(
+    public ResponseEntity<?> registerUser(
             @Valid @RequestBody RegisterUserRequest request,
                                               UriComponentsBuilder uriBuilder) {
 
-        if(userRepository.existByEmail(request.getEmail())) {
+        if(userRepository.existsByEmail(request.getEmail())) {
             return ResponseEntity.badRequest().body(
                     Map.of("email", "Email is already registered")
             );
         };
 
         var user = userMapper.toEntity(request);
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
         User savedUser = userRepository.save(user);
 
         var userDto = userMapper.userDto(savedUser);
@@ -72,6 +73,11 @@ public class UserController {
 
         return ResponseEntity.created(uri).body(userDto);
     }
+
+
+
+
+
 
     @PutMapping("/{id}")
     public ResponseEntity<UserDto> updateUser(

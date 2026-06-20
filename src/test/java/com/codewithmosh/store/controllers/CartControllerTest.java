@@ -9,11 +9,13 @@ import com.codewithmosh.store.entities.Product;
 import com.codewithmosh.store.mappers.CartMapper;
 import com.codewithmosh.store.repositories.CartRepository;
 import com.codewithmosh.store.repositories.ProductRepository;
+import com.codewithmosh.store.services.CartService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -31,6 +33,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(CartController.class)
+@Import(CartService.class)
 class CartControllerTest {
 
     @Autowired
@@ -101,9 +104,9 @@ class CartControllerTest {
                         .content("""
                                 {
                                   "productId": 1
-                                }
-                                """))
-                .andExpect(status().isOk())
+                }
+                """))
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.product.id").value(1))
                 .andExpect(jsonPath("$.product.name").value("Laptop"))
                 .andExpect(jsonPath("$.quantity").value(3))
