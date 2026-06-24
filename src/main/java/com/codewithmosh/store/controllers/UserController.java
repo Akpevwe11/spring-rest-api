@@ -1,6 +1,7 @@
 package com.codewithmosh.store.controllers;
 
 import com.codewithmosh.store.dto.*;
+import com.codewithmosh.store.entities.Role;
 import com.codewithmosh.store.entities.User;
 import com.codewithmosh.store.exceptions.UserNotFoundException;
 import com.codewithmosh.store.mappers.UserMapper;
@@ -66,6 +67,7 @@ public class UserController {
 
         var user = userMapper.toEntity(request);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setRole(Role.USER);
         User savedUser = userRepository.save(user);
 
         var userDto = userMapper.userDto(savedUser);

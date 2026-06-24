@@ -1,6 +1,7 @@
 package com.codewithmosh.store.services;
 
 import com.codewithmosh.store.config.JwtConfig;
+import com.codewithmosh.store.entities.Role;
 import com.codewithmosh.store.entities.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -19,7 +20,7 @@ public class JwtService {
     private final JwtConfig jwtConfig;
 
 
-    public String generateAccessToken(User user) {
+    public Jwt generateAccessToken(User user) {
 
         final long tokenExpiration = 300;
 
@@ -28,7 +29,7 @@ public class JwtService {
 
     }
 
-    public String generateRefreshToken(User user) {
+    public Jwt generateRefreshToken(User user) {
 
         final long tokenExpiration = 604800;
 
@@ -36,15 +37,17 @@ public class JwtService {
 
     }
 
-    private String generateToken(User user, long tokenExpiration) {
-        return Jwts.builder()
+    private Jwt generateToken(User user, long tokenExpiration) {
+       var claims = Jwts.claims()
                 .subject(user.getId().toString())
-                .claim("email", user.getEmail())
-                .claim("name", user.getName())
+                .add("email", user.getEmail())
+                .add("name", user.getName())
+                .add("role", user.getRole())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 1000 * tokenExpiration))
-                .signWith(jwtConfig.getSecretKey())
-                .compact();
+                .build();
+
+       return new Jwt(claims, jwtConfig.getSecretKey());
     }
 
     public boolean validateToken(String token) {
@@ -70,9 +73,15 @@ public class JwtService {
                 .getPayload();
     }
 
-
-    public Long getUserIdFromToken(String token) {
-        return Long.valueOf(getClaims(token).getSubject());
+    public Jwt parseToken(String token) {
+        try {
+            var claims = getClaims(token);
+            return new Jwt(claims, jwtConfig.getSecretKey());
+        } catch (JwtException ex) {
+            return null;
+        }
     }
+
+
 }
 
