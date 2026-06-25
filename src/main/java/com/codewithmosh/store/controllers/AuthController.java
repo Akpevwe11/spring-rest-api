@@ -82,6 +82,9 @@ public class AuthController {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         var userId = (Long) authentication.getPrincipal();
         var user = userRepository.findById(userId).orElse(null);
+
+
+
         if (user == null) {
             return ResponseEntity.notFound().build();
         }
