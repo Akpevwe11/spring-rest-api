@@ -14,6 +14,10 @@ spring:
     secret: ${JWT_SECRET}
     accessTokenExpiration: 7200 # 1 hour in milliseconds
     refreshTokenExpiration: 604800
+  stripe:
+    secretKey: ${STRIPE_SECRET_KEY}
+
+  websiteUrl: http://localhost:4242
 
 
   mvc:
